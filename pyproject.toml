@@ -1,0 +1,31 @@
+[project]
+name = "sadnm"
+version = "0.1.0"
+description = "SADnm - SWOT Algorithm for Discharge: per-reach river discharge from SWOT via uniform-flow inversion + temporal GP assimilation."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "Kostas Andreadis", email = "kandread@umass.edu" }]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+# Stage 3 (spatial mass conservation) and the NetCDF I/O need netCDF4.
+io = ["netCDF4>=1.6"]
+spatial = ["netCDF4>=1.6"]
+dev = ["pytest>=7.0", "netCDF4>=1.6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["sadnm"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"sadnm/sadnm_params.json" = "sadnm/sadnm_params.json"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
