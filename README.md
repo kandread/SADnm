@@ -27,8 +27,8 @@ On the SVS validation gauges, SADnm produces valid estimates (with per-overpass 
 ## Install
 
 ```bash
-pip install -e .            # core (numpy, scipy)
-pip install -e .[io]        # + netCDF4 for I/O and Stage 3
+pip install -e .  # core (numpy, scipy)
+pip install -e .[io] # netCDF4 for I/O and Stage 3
 ```
 
 ## Usage
@@ -48,3 +48,7 @@ res = sadnm.run_reach(
 ## Deployment
 
 The Confluence FLPE wrapper (entry point + Dockerfile) lives in the [Confluence SAD module repository](https://github.com/SWOT-Confluence/sad) and depends on this package; it replaces the Julia SAD module while preserving the `<reach_id>_sad.nc` output specification.
+
+## Disclaimer
+
+Some of the unit tests were developed with the help of an LLM (Claude). See commit history for details.
