@@ -4,7 +4,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-import zarr
 
 from sadnm.uniform_flow import (
     InversionConfig, invert_reach, robust_stage, estimate_r, months_of, A_FLOOR,
@@ -12,6 +11,7 @@ from sadnm.uniform_flow import (
 
 _EPOCH = datetime.datetime(2000, 1, 1, 0, 0, 0)
 STORE = Path('data/store.zarr')
+FIXTURE = Path(__file__).parent / 'data' / 'parity_fixture.npz'
 
 
 # Unit pieces
@@ -116,10 +116,60 @@ def test_spline_path_recovers_dynamics():
     assert r > 0.85, f"correlation {r}"
 
 
-# Parity against the prototype on real reaches
+# Parity on real reaches
+#
+# `data/parity_fixture.npz` holds 40 real validation reaches carved from the full
+# preprocessed store (regenerate with data/make_parity_fixture.py). They were selected by
+# sorted reach_idx, never by how well they invert, so the 9 that fail their gates are part
+# of the fixture's value: they exercise the graceful-degradation path on real data.
+
+
+def _invert_fixture():
+    """Run the real inversion over every fixture reach; return aggregate statistics."""
+    f = np.load(FIXTURE)
+    n_reaches = len({k.split('_')[0] for k in f.files})
+    r_shapes, corrs, reasons = [], [], []
+    for n in range(n_reaches):
+        ns = f[f'{n}_ns']
+        res = invert_reach(
+            f[f'{n}_wse'], f[f'{n}_wid'], f[f'{n}_nmask'], f[f'{n}_omask'],
+            f[f'{n}_nid'], f[f'{n}_time'], f[f'{n}_mq'],
+            dict(wse_mean=ns[0], wse_std=ns[1], width_mean=ns[2], width_std=ns[3]),
+            eval_overpass_idx=f[f'{n}_oidx'],
+        )
+        if not res.ok:
+            reasons.append(res.reason)
+            continue
+        r_shapes.append(res.r_shape)
+        keep = np.isin(f[f'{n}_oidx'], res.overpass_idx)
+        if keep.sum() >= 5:
+            corrs.append(np.corrcoef(np.log(res.q), np.log(f[f'{n}_gq'][keep]))[0, 1])
+    return n_reaches, np.array(r_shapes), np.array(corrs), reasons
+
+
+def test_parity_fixture_coverage_and_gates():
+    """Frozen fixture + no RNG in invert_reach -> these counts are exact."""
+    n_reaches, r_shapes, _, reasons = _invert_fixture()
+    assert n_reaches == 40
+    assert len(r_shapes) == 31, f"{len(r_shapes)} reaches inverted, expected 31"
+    assert len(reasons) == 9, f"{len(reasons)} reaches rejected, expected 9"
+    # rejections are real gate decisions, not crashes
+    assert set(reasons) <= {'too few evaluable overpasses',
+                            'too few/flat calibration overpasses'}, set(reasons)
+
+
+def test_parity_fixture_recovers_shape_and_dynamics():
+    _, r_shapes, corrs, _ = _invert_fixture()
+    med_r, med_c = float(np.median(r_shapes)), float(np.median(corrs))
+    assert abs(med_r - 0.802) < 0.05, f"median r_shape {med_r}, expected ~0.802"
+    assert abs(med_c - 0.811) < 0.02, f"median corr {med_c}, expected ~0.811"
+
+
+# Full-store parity: the same check at scale, for local runs when touching Stage 1.
 
 @pytest.mark.skipif(not STORE.exists(), reason="zarr store not present")
-def test_parity_on_real_reaches():
+def test_parity_on_full_store():
+    zarr = pytest.importorskip('zarr')
     store = zarr.open(str(STORE), mode='r')
     val_g = np.array(store['gauge']['val_reach_idx'])
     ov = np.array(store['gauge']['val_pairs']['overpass_idx'])
