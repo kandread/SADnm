@@ -15,7 +15,7 @@ the original (Julia) SAD which used rejection sampling and a Local Ensemble Kalm
 
 ## Validated result
 
-On the SVS validation gauges, SADnm produces valid estimates (with per-overpass uncertainty) for 2,522 reaches with the following validation statistics
+On the [SVS](https://darus.uni-stuttgart.de/dataset.xhtml?persistentId=doi:10.18419/DARUS-5843) validation gauges, SADnm produces valid estimates (with per-overpass uncertainty) for 2,522 reaches with the following validation statistics
 |                     | 32th percentile | Median | 68th percentile |
 |---------------------|-----------------|--------|-----------------|
 | NSE                 | -0.04           | 0.30   | 0.59            |
