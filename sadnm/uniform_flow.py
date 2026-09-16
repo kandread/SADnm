@@ -59,6 +59,8 @@ class ReachResult:
     r_shape: float = np.nan # Dingman shape r
     d0: float = np.nan # baseflow depth (m)
     C: float = np.nan # level coefficient
+    W0: float = np.nan # width at the baseflow depth d0 (m)
+    Hmin: float = np.nan # lowest calibration stage, in the WSE datum (m)
     cal_resid: float = np.nan # calibration residual (selection metric)
     n_used: int = 0
     used_spline: bool = False # spline path vs robust-line fallback
@@ -266,6 +268,13 @@ def invert_reach(
         return ReachResult(ok=False, reason="calibration failed")
     resid, d0, a, r_shape, C = best
 
+    # Width coefficient kappa in W = kappa * y^(1/r), evaluated at the winning d0. The
+    # centroid intercept is the one consistent with the std-ratio (TLS) slope estimate_r
+    # uses; W0 is then the width at baseflow depth.
+    inv_r = 1.0 / r_shape
+    log_kappa = float(np.mean(logW_geo) - inv_r * np.mean(np.log(dH_geo + d0)))
+    W0 = float(np.exp(log_kappa) * d0 ** inv_r)
+
     # invert Q at requested overpasses (default: all good)
     if eval_overpass_idx is None:
         eval_overpass_idx = np.where(good)[0]
@@ -278,6 +287,44 @@ def invert_reach(
 
     return ReachResult(
         ok=True, q=q, overpass_idx=idx, r_shape=r_shape, d0=d0, C=C,
+        W0=W0, Hmin=float(Hmin),
         cal_resid=np.sqrt(resid / max(len(dH_m), 1)), n_used=int(len(idx)),
         used_spline=used_spline,
+    )
+
+
+@dataclass(frozen=True)
+class EffectiveCrossSection:
+    """Channel geometry implied by a Stage-1 fit.
+
+    These are *effective* quantities, not surveyed ones. `W0`, `A0`, `bed_elevation`
+    and `n_eff` all inherit the monthly prior's level through `C`, so any bias in the
+    prior climatology transfers straight into them. Only `r` is data-driven.
+    """
+    r: float
+    d0: float # baseflow depth (m)
+    W0: float # width at d0 (m)
+    A0: float # flow area below d0 (m^2)
+    bed_elevation: float # in the WSE datum (m)
+    n_eff: float # effective Manning n
+
+
+def effective_cross_section(res, slope: float) -> EffectiveCrossSection:
+    """Effective cross-section implied by a `ReachResult` or `SADnmResult`.
+
+    `n_eff` inverts the Stage-1 level constant, which absorbs roughness and slope
+    jointly as `exp(C) = W0 * (r/(r+1))^(5/3) * S^(1/2) / (n * d0^(1/r))`. SADnm never
+    uses slope, so `slope` (reach water-surface slope, m/m) must come from the caller's
+    own observations; `n_eff` is NaN without a positive one.
+    """
+    r, d0, C, W0 = res.r_shape, res.d0, res.C, res.W0
+    shape = r / (r + 1.0)
+    sqrt_s = np.sqrt(slope) if slope > 0 else np.nan
+    return EffectiveCrossSection(
+        r=r,
+        d0=d0,
+        W0=W0,
+        A0=shape * W0 * d0,
+        bed_elevation=res.Hmin - d0,
+        n_eff=float(W0 * shape ** (5.0 / 3.0) * sqrt_s / (np.exp(C) * d0 ** (1.0 / r))),
     )

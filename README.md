@@ -49,6 +49,26 @@ res = sadnm.run_reach(
 # res.q (smoothed discharge), res.log_sigma (uncertainty), res.ok / res.cal_resid
 ```
 
+## Effective cross-section
+
+Stage-1 parameters define an exportable effective channel geometry:
+
+```python
+ecs = sadnm.effective_cross_section(res, slope)   # slope: reach WSE slope [m/m]
+# ecs.r, ecs.d0, ecs.W0, ecs.A0, ecs.bed_elevation, ecs.n_eff
+```
+
+SADnm never identifies Manning's `n`, it is absorbed, jointly with slope, into the
+single level constant `C`. `n_eff` simply inverts that relation,
+`exp(C) = W0 (r/(r+1))^{5/3} S^{1/2} / (n\,d_0^{1/r})`, so a slope must be acquired from  observations.
+
+**These are effective quantities.** `W0`, `A0`, `bed_elevation` and
+`n_eff` all inherit the monthly prior's level through `C`, so bias in the prior
+climatology transfers directly into them. Only `r` is data-driven. On synthetic reaches
+with a known channel, `n_eff` recovers the generating `n` to within ~3% even where `d0`
+and `r` are individually off, because it is the combination the level fit actually pins
+down. `W0` and `A0` are correspondingly less well determined.
+
 ## Deployment
 
 The Confluence FLPE wrapper (entry point + Dockerfile) lives in the [Confluence SAD module repository](https://github.com/SWOT-Confluence/sad) and depends on this package; it replaces the Julia SAD module while preserving the `<reach_id>_sad.nc` output specification.

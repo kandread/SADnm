@@ -55,6 +55,8 @@ class SADnmResult:
     r_shape: float = np.nan                  # Dingman shape r
     d0: float = np.nan                       # Stage-1 baseflow depth (m)
     C: float = np.nan                        # Stage-1 level coefficient (log)
+    W0: float = np.nan                       # width at the baseflow depth d0 (m)
+    Hmin: float = np.nan                     # lowest calibration stage, WSE datum (m)
     used_spline: bool = False
 
 
@@ -120,4 +122,5 @@ def run_reach(wse_norm, width_norm, node_mask, overpass_mask, node_id, overpass_
     q_s, log_sig = smooth_reach(ts / 86400.0, res.q, mu, params, kernel=kernel)
     return SADnmResult(ok=True, q=q_s, q_phys=res.q, log_sigma=log_sig,
                        overpass_idx=res.overpass_idx, cal_resid=res.cal_resid,
-                       r_shape=res.r_shape, d0=res.d0, C=res.C, used_spline=res.used_spline)
+                       r_shape=res.r_shape, d0=res.d0, C=res.C, W0=res.W0, Hmin=res.Hmin,
+                       used_spline=res.used_spline)

@@ -7,6 +7,7 @@ import pytest
 
 from sadnm.uniform_flow import (
     InversionConfig, invert_reach, robust_stage, estimate_r, months_of, A_FLOOR,
+    ReachResult, effective_cross_section,
 )
 
 _EPOCH = datetime.datetime(2000, 1, 1, 0, 0, 0)
@@ -114,6 +115,41 @@ def test_spline_path_recovers_dynamics():
     assert abs(res.r_shape - r_true) < 0.25
     r = np.corrcoef(np.log(res.q), np.log(Q_true[res.overpass_idx]))[0, 1]
     assert r > 0.85, f"correlation {r}"
+
+
+# Effective cross-section export
+#
+# _synthetic_reach generates from a known channel: n_man=0.03, S=1e-4, Z0=100.
+
+def test_effective_cross_section_inverts_the_level_constant():
+    """Build C forward from a known (n, W0, d0, r, S), then recover n from it."""
+    r, d0, W0, S, n_true, hmin = 0.6, 2.5, 120.0, 4e-5, 0.031, 87.5
+    shape = r / (r + 1.0)
+    C = float(np.log(W0 * shape ** (5 / 3) * np.sqrt(S) / (n_true * d0 ** (1 / r))))
+    ecs = effective_cross_section(
+        ReachResult(ok=True, r_shape=r, d0=d0, C=C, W0=W0, Hmin=hmin), S)
+    assert abs(ecs.n_eff - n_true) < 1e-12
+    assert abs(ecs.A0 - shape * W0 * d0) < 1e-12
+    assert abs(ecs.bed_elevation - (hmin - d0)) < 1e-12
+
+
+def test_effective_cross_section_needs_a_positive_slope():
+    res = ReachResult(ok=True, r_shape=0.6, d0=2.5, C=1.0, W0=120.0, Hmin=87.5)
+    assert np.isnan(effective_cross_section(res, 0.0).n_eff)
+    assert np.isfinite(effective_cross_section(res, 4e-5).n_eff)
+
+
+@pytest.mark.parametrize('r_true,seed', [(0.5, 1), (0.35, 2), (0.8, 4)])
+def test_synthetic_recovers_effective_roughness(r_true, seed):
+    """n_eff is the combination the level fit actually pins down, so it recovers the
+    generating n even where d0 and r individually are off."""
+    inputs, _, _ = _synthetic_reach(r_true=r_true, seed=seed)
+    res = invert_reach(**inputs)
+    assert res.ok, res.reason
+    ecs = effective_cross_section(res, 1e-4)
+    assert 0.9 < ecs.n_eff / 0.03 < 1.1, f"n_eff {ecs.n_eff}"
+    assert abs(ecs.bed_elevation - 100.0) < 1.5
+    assert ecs.W0 > 0 and ecs.A0 > 0
 
 
 # Parity on real reaches
