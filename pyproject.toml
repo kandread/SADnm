@@ -16,6 +16,10 @@ dependencies = [
 io = ["netCDF4>=1.6"]
 spatial = ["netCDF4>=1.6"]
 dev = ["pytest>=7.0", "netCDF4>=1.6"]
+# `zarr` is deliberately NOT declared: it is only needed by the real-reach parity test,
+# which also needs a local store, and zarr 3.x (required to read the v3 store) drops
+# Python 3.10. The test skips itself when zarr is absent; install it ad hoc to run it:
+#   uv run --with zarr pytest tests/test_uniform_flow.py
 
 [build-system]
 requires = ["hatchling"]
