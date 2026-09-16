@@ -1,15 +1,14 @@
 """
 Frozen SADnm deployment configuration.
 
-The Stage-2 GP hyper-parameters are calibrated ONCE, offline, on the training
-gauges (scripts/calibrate_sadnm.py) and shipped here as constants. Deployment
+The Stage-2 GP hyper-parameters are calibrated offline, on the training
+gauges (scripts/calibrate_sadnm.py) and packaged here as constants. Deployment
 loads these and never refits. A SADnm module run needs no gauge data.
 
 `configs/sadnm_params.json` is the artifact (written by the
 calibration script); the constants below are the checked-in fallback / default
 and must match it. The calibration script overwrites the JSON.
 """
-from __future__ import annotations
 
 import dataclasses
 import json
@@ -20,7 +19,7 @@ from sadnm.uniform_flow import InversionConfig
 
 CONFIG_PATH = Path(__file__).resolve().parent / 'sadnm_params.json'
 
-# Calibrated on the 130 training gauges. Matches configs/sadnm_params.json.
+# calibrated on 130 training gauges matching configs/sadnm_params.json
 DEFAULT_TEMPORAL = TemporalParams(sigma_proc=0.398, tau=5.62, sigma_obs=0.305)
 DEFAULT_KERNEL = 'ou'
 
@@ -32,7 +31,7 @@ def save_config(temporal: TemporalParams, kernel: str = DEFAULT_KERNEL,
         'temporal': dataclasses.asdict(temporal),
         'kernel': kernel,
         'inversion': dataclasses.asdict(inversion),
-        'note': 'Calibrated once on the 130 SADnm training gauges; frozen for deployment.',
+        'note': 'Calibrated once on the 130 training gauges; frozen for deployment.',
     }
     path.write_text(json.dumps(blob, indent=2))
     return path
