@@ -1,0 +1,25 @@
+{
+  "temporal": {
+    "sigma_proc": 0.3979560808439317,
+    "tau": 5.620221134347404,
+    "sigma_obs": 0.3049190969392793
+  },
+  "kernel": "ou",
+  "inversion": {
+    "rmse_max": 1.0,
+    "min_nodes": 5,
+    "min_good_overpass": 8,
+    "min_months": 4,
+    "min_geom_overpass": 8,
+    "inv_r_min": 0.2,
+    "inv_r_max": 3.3333333333333335,
+    "d0_grid_lo": 0.2,
+    "d0_grid_hi": 20.0,
+    "d0_grid_n": 25,
+    "min_eval_pairs": 5,
+    "use_spline": false,
+    "spline_s": 0.01,
+    "mono_min": 0.85
+  },
+  "note": "Calibrated once on the 130 SADnm training gauges; frozen for deployment."
+}
